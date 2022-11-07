@@ -15,7 +15,8 @@ public class WebTracker {
 			public void run() {
             	if (SystemTray.isSupported()) {
                     NotificationSystem notif = new NotificationSystem();
-                    new Gui(notif).setVisible(true);
+                    Scrape scraper = new Scrape();
+                    new Gui(notif, scraper).setVisible(true);
             	}
             }
         });	

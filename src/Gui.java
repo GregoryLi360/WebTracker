@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.awt.event.*;
+import java.io.IOException;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.text.*;
@@ -22,13 +23,16 @@ public class Gui extends JFrame {
     /* notification system */
     private NotificationSystem notif;
     
+    /* web scraper */
+    private Scrape scraper;
+    
     /* links to track */
     private ArrayList<String> links;
     
     private boolean wasConnected = true;
 	
     /* creates gui for app */ 
-	public Gui (NotificationSystem notif) {
+	public Gui (NotificationSystem notif, Scrape scraper) {
 		
 		/* use system graphic */
 		try {
@@ -37,8 +41,8 @@ public class Gui extends JFrame {
 			e.printStackTrace();
 		}
 		
-		/* save instance of notification system */
 		this.notif = notif;
+		this.scraper = scraper;
 		init();
 	}
 	
@@ -91,8 +95,19 @@ public class Gui extends JFrame {
 				if (wasConnected && !connected) warn();
 	    		else if (!wasConnected && connected) unwarn();
 	    		wasConnected = connected;
-				
-				System.out.println(link);
+	    		
+	    		System.out.println(link);
+	    		
+	    		if (!connected) return;
+	    		
+	    		if (!link.substring(0, 8).equals("https://") && !link.substring(0, 7).equals("http://"))
+	    			link = "http://" + link;
+	    		
+				try {
+					System.out.println(scraper.scrape(link));
+				} catch (IOException e1) {
+					System.out.println("invalid url");
+				}
 			}
         });
         remove = new JButton("Remove");
