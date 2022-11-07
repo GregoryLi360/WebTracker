@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.*;
 import javax.swing.*;
 
-import resources.*;
+import systems.*;
 
 public class Gui extends JFrame {
 
