@@ -3,7 +3,8 @@ import java.awt.event.*;
 import java.io.IOException;
 import java.util.*;
 import javax.swing.*;
-import javax.swing.text.*;
+
+import resources.*;
 
 public class Gui extends JFrame {
 
@@ -24,7 +25,7 @@ public class Gui extends JFrame {
     private NotificationSystem notif;
     
     /* web scraper */
-    private Scrape scraper;
+    private CommunicationSystem comms;
     
     /* links to track */
     private ArrayList<String> links;
@@ -32,7 +33,7 @@ public class Gui extends JFrame {
     private boolean wasConnected = true;
 	
     /* creates gui for app */ 
-	public Gui (NotificationSystem notif, Scrape scraper) {
+	public Gui (NotificationSystem notif, CommunicationSystem comms) {
 		
 		/* use system graphic */
 		try {
@@ -42,7 +43,7 @@ public class Gui extends JFrame {
 		}
 		
 		this.notif = notif;
-		this.scraper = scraper;
+		this.comms = comms;
 		init();
 	}
 	
@@ -76,7 +77,7 @@ public class Gui extends JFrame {
 					e1.printStackTrace();
 				}
                 
-                boolean connected = WebTracker.connectedToWifi();
+                boolean connected = CommunicationSystem.connectedToWifi();
                 if (wasConnected && !connected) warn();
         		else if (!wasConnected && connected) unwarn();
         		wasConnected = connected;
@@ -91,7 +92,7 @@ public class Gui extends JFrame {
 				String link = (String)dropdown.getSelectedItem();
 				if (link == null) return;
 				
-				boolean connected = WebTracker.connectedToWifi();
+				boolean connected = CommunicationSystem.connectedToWifi();
 				if (wasConnected && !connected) warn();
 	    		else if (!wasConnected && connected) unwarn();
 	    		wasConnected = connected;
@@ -104,7 +105,7 @@ public class Gui extends JFrame {
 	    			link = "http://" + link;
 	    		
 				try {
-					System.out.println(scraper.scrape(link));
+					System.out.println(comms.scrape(link));
 				} catch (IOException e1) {
 					System.out.println("invalid url");
 				}
@@ -125,7 +126,7 @@ public class Gui extends JFrame {
                 
         		textArea.setText(sb.toString());
         		
-        		boolean connected = WebTracker.connectedToWifi();
+        		boolean connected = CommunicationSystem.connectedToWifi();
         		if (wasConnected && !connected) warn();
         		else if (!wasConnected && connected) unwarn();
         		wasConnected = connected;
