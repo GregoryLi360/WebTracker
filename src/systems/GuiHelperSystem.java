@@ -4,6 +4,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Set;
 
 import javax.swing.*;
 
@@ -21,30 +24,33 @@ public class GuiHelperSystem {
 		
 		Rectangle entry = new Rectangle(gap, gap, Math.max(minw, Math.min(maxw, ww/2)), Math.max(minh, Math.min(maxh, wh/10)));
 		Rectangle submit = new Rectangle(entry.x + entry.width + gap, gap, Math.max(minw, Math.min(maxw/2, ww/3)), Math.max(minh, Math.min(maxh, wh/10)));
+		final int settingsSideLen = Math.min(Math.max(minw, Math.min(maxw/5, ww/7)), Math.max(minh, Math.min(maxh, wh/10)));
+		Rectangle setting = new Rectangle(window.width - settingsSideLen - gap, gap, settingsSideLen, settingsSideLen);
 		Rectangle dropdown = new Rectangle(gap, entry.y + entry.height + gap, Math.max(minw, Math.min(maxw/3, ww/4)), Math.max(minh, Math.min(maxh, wh/10)));
 		Rectangle view = new Rectangle(dropdown.x + dropdown.width + gap, entry.y + entry.height + gap, Math.max(minw, Math.min(maxw/3, ww/4)), Math.max(minh, Math.min(maxh, wh/10)));
 		Rectangle remove = new Rectangle(view.x + view.width + gap, entry.y + entry.height + gap, Math.max(minw, Math.min(maxw/3, ww/4)), Math.max(minh, Math.min(maxh, wh/10)));
+		final int refreshSideLen = Math.min(Math.max(minw, Math.min(maxw/3, ww/4)), Math.max(minh, Math.min(maxh, wh/10)));
+		Rectangle refresh = new Rectangle(remove.x + remove.width + gap, entry.y + entry.height + gap, refreshSideLen, refreshSideLen);
+		Rectangle warning = new Rectangle(refresh.x + refresh.width + gap, entry.y + entry.height + gap, Math.min(ww - (dropdown.width + view.width + remove.width + 20), 300), Math.max(minh, Math.min(maxh, wh/10)));
 		Rectangle textArea = new Rectangle(gap, remove.y + remove.height + gap, Math.max(minw, ww - 10), Math.max(minh, wh - entry.height - dropdown.height - 50));
-		Rectangle warning = new Rectangle(remove.x + remove.width + 2 * gap, entry.y + entry.height + gap, Math.min(ww - (dropdown.width + view.width + remove.width + 20), 300), Math.max(minh, Math.min(maxh, wh/10)));
-		Rectangle setting = new Rectangle(window.width - Math.max(minw, Math.min(maxw/5, ww/7)), gap, Math.max(minw, Math.min(maxw/5, ww/7)) - 5, Math.max(minh, Math.min(maxh, wh/10)));
 		
-		return new Rectangle[]{entry, submit, dropdown, view, remove, textArea, warning, setting};
+		return new Rectangle[]{entry, submit, dropdown, view, remove, textArea, warning, setting, refresh};
 	}
 	
 	public static void addActionListeners(Gui gui, AbstractAction viewAction, AbstractAction removeAction) {
-		/* map enter to view selected link */
+		/* map enter key to view selected link */
         gui.textArea.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "viewAction");
         gui.textArea.getActionMap().put("viewAction", viewAction);
         gui.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "viewAction");
         gui.getRootPane().getActionMap().put("viewAction", viewAction);
         
-        /* map delete to remove selected link */
+        /* map delete key to remove selected link */
         gui.textArea.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "removeAction");
         gui.textArea.getActionMap().put("removeAction", removeAction);
         gui.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "removeAction");
         gui.getRootPane().getActionMap().put("removeAction", removeAction);
         
-        /* in focus listener */
+        /* detects when window is in focus */
         gui.addWindowFocusListener(new WindowFocusListener() {
 			@Override
 			public void windowLostFocus(WindowEvent e) {
@@ -54,7 +60,6 @@ public class GuiHelperSystem {
 			@Override
 			public void windowGainedFocus(WindowEvent e) {
 				gui.inFocus = true;
-				gui.notif.clearBadge();
 			}
 		});
         
@@ -69,7 +74,8 @@ public class GuiHelperSystem {
 				gui.remove.setBounds(bounds[4]);
 				gui.scroll.setBounds(bounds[5]);
 				gui.warning.setBounds(bounds[6]);
-//				settings.setBounds(bounds[7]);
+				gui.settings.setBounds(bounds[7]);
+				gui.refresh.setBounds(bounds[8]);
 			}
 		});
 	}
@@ -79,19 +85,25 @@ public class GuiHelperSystem {
 		gui.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		gui.setTitle(APPNAME);
 		gui.setSize(dim.width / 2, dim.height / 2 + 50);
+		gui.setMinimumSize(new Dimension(200, 100));
 		gui.setLayout(null);
 		gui.setLocationRelativeTo(null);
 	}
 	
+	/* adds link to keep track of */
 	public static ActionListener getSubmitAction(Gui gui) {
 		return new ActionListener() {
 			public void actionPerformed(final ActionEvent e) {
-				String txt = gui.entry.getText().replaceAll("\\s+", ""); // replace all whitespace
+				/* remove whitespace */
+				String txt = gui.entry.getText().replaceAll("\\s+", "");
+				
+				/* do nothing if the button is disabled or link is already being tracked */
 				if (!gui.submit.isEnabled() || gui.links.contains(txt))
 					return;
 
+				/* do not add new link and warn the user if there are over 100 links */
 				int len = gui.links.size() + 1;
-				if (len > 100) {
+				if (len > 100) { 
 					JOptionPane.showMessageDialog(null, "Tracking limit exceeded, try removing entries");
 					return;
 				}
@@ -103,6 +115,7 @@ public class GuiHelperSystem {
 				gui.states.put(txt, URLState.UNCHANGED);
 				ActionSystem.updateTextArea(gui.textArea, gui.links, gui.states);
 
+				/* scrape the webpage on submit */
 				CommunicationSystem.connectedToWiFi().thenAccept(connected -> {
 					if (!(gui.wasConnected = ActionSystem.warnWiFi(gui, gui.warning, connected, gui.wasConnected))) {
 						gui.submit.setEnabled(true);
@@ -125,30 +138,92 @@ public class GuiHelperSystem {
 						ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
 					});
 				});
-
-				/* notif testing things */
-//				notif.displayTray(txt + " added to tracker");
-//				notif.addToBadge();
 			}
 		};
 	}
 	
+	/* show settings page */
+	public static ActionListener getSettingsAction(Gui gui) {
+		return new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				gui.getContentPane().removeAll();
+				var t = new JButton("Home");
+				t.setBounds(0, 0, 100, 100);
+				t.addActionListener(new ActionListener() {
+					public void actionPerformed(ActionEvent e) {
+						gui.getContentPane().removeAll();
+						gui.add(gui.entry);
+						gui.add(gui.submit);
+						gui.add(gui.dropdown);
+						gui.add(gui.view);
+						gui.add(gui.remove);
+						gui.add(gui.scroll);
+						gui.add(gui.settings);
+						gui.add(gui.refresh);
+						gui.repaint();
+					}
+				});
+				gui.add(t);
+				gui.repaint();
+			}
+			
+		};
+	}
+	
+	/* views the selected link through both local html file(s) and url */
 	public static ActionListener getViewAction(Gui gui) {
 		return new ActionListener() {
 			public void actionPerformed(final ActionEvent e) {
 				String link = (String) gui.dropdown.getSelectedItem();
-				if (link == null)
+				if (link == null || gui.states.get(link) == URLState.INVALID)
 					return;
 
 				gui.view.setEnabled(false);
 
+				final String newLink = ActionSystem.prependHTTP(link);
+				
+				/* opens the most recent file and the actual website url; if it has an updated status, opens the old local html version */
+				File file;
+				if ((file = ActionSystem.getMostRecent(Gui.APPNAME, newLink)) != null) {
+					if (gui.states.get(link) == URLState.UPDATED) {
+						gui.notif.removeBadge();
+						File secondMostRecent = ActionSystem.getMostRecent(Gui.APPNAME, newLink, Set.of(file.getName()));
+						if (secondMostRecent == null) {
+							JOptionPane.showMessageDialog(null, "Older HTML file not found");
+						} else {
+							try {
+								Desktop.getDesktop().browse(secondMostRecent.toURI());
+							} catch (IOException e1) {
+								JOptionPane.showMessageDialog(null, "Unable to open HTML file");
+							}
+						}
+					}
+					
+					try {
+						Desktop.getDesktop().browse(file.toURI());
+					} catch (IOException e1) {
+						JOptionPane.showMessageDialog(null, "Unable to open HTML file");
+					}
+					
+					try {
+						Desktop.getDesktop().browse(new URI(newLink));
+					} catch (IOException | URISyntaxException e1) {
+						JOptionPane.showMessageDialog(null, "Unable to open URL");
+					}
+					
+					gui.view.setEnabled(true);
+					gui.states.put(link, URLState.UNCHANGED);
+					ActionSystem.updateTextArea(gui.textArea, gui.links, gui.states);
+					return;
+				}
+				
+				
+				/* only used if submitted when not connected to wifi */
 				CommunicationSystem.connectedToWiFi().thenAccept((Boolean connected) -> {
 					if (!(gui.wasConnected = ActionSystem.warnWiFi(gui, gui.warning, connected, gui.wasConnected))) {
 						gui.view.setEnabled(true);
 						return;
 					}
-
-					final String newLink = ActionSystem.prependHTTP(link);
 
 					CommunicationSystem.scrape(newLink).whenComplete((res, ex) -> {
 						gui.view.setEnabled(true);
@@ -161,38 +236,31 @@ public class GuiHelperSystem {
 							return;
 						}
 
-						/* compare with previous info */
-						Document doc = gui.info.get(link);
+						/* put into data structures */
 						gui.info.put(link, res);
+						gui.states.put(link, URLState.UNCHANGED);
 						
-						/* finds latest file to open */
-						File file;
-						if (doc == null) {
-							file = ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
-							gui.states.put(link, URLState.UNCHANGED);
-						} else if (doc.text().equals(res.text())) {
-							file = ActionSystem.getMostRecent(Gui.APPNAME, newLink);
-							gui.states.put(link, URLState.UNCHANGED);
-						} else {
-							file = ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
-							gui.states.put(link, URLState.UPDATED);
-							gui.notif.displayTray(link + " updated");
-							gui.notif.addToBadge();
-						}
 						
 						/* opens designated file */
 						try {
-							Desktop.getDesktop().browse(file.toURI());
+							Desktop.getDesktop().browse(ActionSystem.writeFile(Gui.APPNAME, newLink, res.html()).toURI());
 						} catch (IOException e1) {
 							JOptionPane.showMessageDialog(null, "Unable to open HTML file");
 						}
-
+						
+						try {
+							Desktop.getDesktop().browse(new URI(newLink));
+						} catch (IOException | URISyntaxException e1) {
+							JOptionPane.showMessageDialog(null, "Unable to open URL");
+						}
+						
 					});
 				});
 			}
 		};
 	}
 	
+	/* stop tracking selected link */
 	public static ActionListener getRemoveAction(Gui gui) {
 		return new ActionListener() {
 			public void actionPerformed(final ActionEvent e) {
@@ -211,6 +279,62 @@ public class GuiHelperSystem {
 				CommunicationSystem.connectedToWiFi().thenAccept(
 						connected -> gui.wasConnected = ActionSystem.warnWiFi(gui, gui.warning, connected, gui.wasConnected));
 			}
+		};
+	}
+	
+	/* manually fetches the link and removes updated status and badge notifications */
+	public static ActionListener getRefreshAction(Gui gui) {
+		return new ActionListener() {
+			public void actionPerformed(final ActionEvent e) {
+				int index = gui.dropdown.getSelectedIndex();
+				if (index < 0)
+					return;
+
+				gui.refresh.setEnabled(false);
+				
+				String link = gui.links.get(index);
+				String newLink = ActionSystem.prependHTTP(link);
+				
+				CommunicationSystem.connectedToWiFi().thenAccept((Boolean connected) -> {
+					if (!(gui.wasConnected = ActionSystem.warnWiFi(gui, gui.warning, connected, gui.wasConnected))) {
+						gui.refresh.setEnabled(true);
+						return;
+					}
+					
+					CommunicationSystem.scrape(newLink).whenComplete((res, ex) -> {
+						gui.refresh.setEnabled(true);
+
+						/* handle invalid url */
+						if (ex != null) {
+							JOptionPane.showMessageDialog(null, "URL " + newLink + " is invalid");
+							gui.states.put(link, URLState.INVALID);
+							ActionSystem.updateTextArea(gui.textArea, gui.links, gui.states);
+							return;
+						}
+						
+						final var originalState = gui.states.get(link);
+						if (originalState == URLState.UPDATED) 
+							gui.states.put(link, URLState.UNCHANGED);
+						
+						/* compare with previous info */
+						Document doc = gui.info.get(link);
+						if (doc == null || doc.html().equals(res.html())) {				
+							ActionSystem.updateTextArea(gui.textArea, gui.links, gui.states);
+							return;
+						} else if (!doc.text().equals(res.text())) { 
+							gui.notif.updateBadge(gui.states.values());
+							if (originalState != URLState.UPDATED) {
+								gui.states.put(link, URLState.UPDATED);
+								gui.notif.updateBadge(gui.states.values());
+							}
+						}
+						
+						gui.info.put(link, res);
+						ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
+						ActionSystem.updateTextArea(gui.textArea, gui.links, gui.states);
+					});
+				});
+			} // TODO: find the difference of texts and show it
 		};
 	}
 }

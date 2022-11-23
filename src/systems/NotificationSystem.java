@@ -3,6 +3,9 @@ package systems;
 import java.awt.*;
 import java.awt.Taskbar.Feature;
 import java.awt.TrayIcon.MessageType;
+import java.util.Collection;
+
+import types.URLState;
 
 /* notification system */
 public class NotificationSystem {
@@ -29,10 +32,22 @@ public class NotificationSystem {
         trayIcon.displayMessage("WebTracker", message, MessageType.INFO);
     }
     
-    /* adds 1 to badge number */
-    public void addToBadge() {
-    	if (Taskbar.getTaskbar().isSupported(Feature.ICON_BADGE_NUMBER))
+    /* adds one to badge number */
+    public void addBadge() {
+		if (Taskbar.getTaskbar().isSupported(Feature.ICON_BADGE_NUMBER))
         	Taskbar.getTaskbar().setIconBadge(Integer.toString(++badgeNumber));
+    }
+    
+    /* removes one from badge number */
+    public void removeBadge() {
+		if (Taskbar.getTaskbar().isSupported(Feature.ICON_BADGE_NUMBER))
+        	Taskbar.getTaskbar().setIconBadge(Integer.toString(--badgeNumber));
+    }
+    
+    /* updates badge number */
+    public void updateBadge(Collection<URLState> states) {
+    	if (Taskbar.getTaskbar().isSupported(Feature.ICON_BADGE_NUMBER))
+        	Taskbar.getTaskbar().setIconBadge(Integer.toString(badgeNumber = (int) states.stream().filter(s -> s == URLState.UPDATED).count()));
     }
     
     /* clears badge number */

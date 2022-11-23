@@ -5,10 +5,12 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 
 import org.jsoup.nodes.Document;
 
+import pages.*;
 import systems.*;
 import types.*;
 
@@ -20,19 +22,11 @@ public class Gui extends JFrame {
 
 	/* constants */
 	public static final String APPNAME = "WebTracker";
-	private final Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
-
-	/* components */
-	public JTextField entry;
-	public JScrollPane scroll;
-	public JTextArea textArea;
-	public JButton submit;
-	public JButton view;
-	public JButton remove;
-	public JComboBox<String> dropdown;
-	public JLabel warning;
-	public JButton settings;
-
+	
+	/* pages */
+	public Home homePage;
+	public Settings settingsPage;
+	
 	/* notification system */
 	public NotificationSystem notif;
 
@@ -46,10 +40,12 @@ public class Gui extends JFrame {
 	public boolean inFocus = true;
 
 	/* creates gui for app */
-	public Gui(NotificationSystem notif) throws Exception {
+	public Gui(final NotificationSystem notif, final Home homePage, final Settings settingsPage) throws Exception {
 		/* use system graphic */
 		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		this.notif = notif;
+		this.homePage = homePage;
+		this.settingsPage = settingsPage;
 		init();
 	}
 
@@ -65,80 +61,14 @@ public class Gui extends JFrame {
 		if (!dir.exists())
 			dir.mkdir();
 
-		/* creates a submit button */
-		var submitAction = GuiHelperSystem.getSubmitAction(this);
-		submit = new JButton("Submit");
-		submit.addActionListener(submitAction);
-
-		/* creates a view button to view the selected link as a local HTML file */
-		var viewAction = GuiHelperSystem.getViewAction(this);
-		view = new JButton("View");
-		view.addActionListener(viewAction);
-
-		/* creates a remove button */
-		var removeAction = GuiHelperSystem.getRemoveAction(this);
-		remove = new JButton("Remove");
-		remove.addActionListener(removeAction);
-
-		/* creates a text entry field and submits when enter key is pressed */
-		entry = new JTextField();
-		entry.addKeyListener(new KeyListener() {
-			@Override
-			public void keyPressed(KeyEvent e) {
-				if (e.getKeyChar() == '\n') {
-					e.consume();
-					submitAction.actionPerformed(null);
-				}
-			}
-
-			public void keyReleased(KeyEvent e) {}
-			public void keyTyped(KeyEvent e) {}
-		});
 		
-		/* creates a dropdown menu of all tracking links */
-		dropdown = new JComboBox<String>(links.toArray(new String[0]));
-		
-		/* creates a scrollable text display component */
-		textArea = new JTextArea();
-		textArea.setEditable(false);
-		scroll = new JScrollPane(textArea);
-
-		/* creates a wifi warning label */
-		warning = new JLabel("Not connected to WIFI");
-
-		/* adds action listeners */
-	    GuiHelperSystem.addActionListeners(this, new AbstractAction() {
-			private static final long serialVersionUID = 3888947883624355853L;
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				viewAction.actionPerformed(null);
-			}
-	    }, new AbstractAction() {
-			private static final long serialVersionUID = 5482259887847269497L;
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				removeAction.actionPerformed(null);
-			}
-	    });
-	    
-	    /* sets default options */
-		GuiHelperSystem.setOptions(this, APPNAME, dim);
-
-		/* adds components to frame */
-		add(entry);
-		add(submit);
-		add(dropdown);
-		add(view);
-		add(remove);
-		add(scroll);
-//        add(settings);
 
 		ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
 		/* executes every 5 minutes */
 		scheduler.scheduleAtFixedRate(() -> {
 			CommunicationSystem.connectedToWiFi().thenAccept(connected -> {
-				if (!(wasConnected = ActionSystem.warnWiFi(Gui.this, warning, connected, wasConnected)))
+				if (!(wasConnected = ActionSystem.warnWiFi(Gui.this, homePage.warning, connected, wasConnected)))
 					return;
 
 				/* loop through links */
@@ -148,7 +78,7 @@ public class Gui extends JFrame {
 					CommunicationSystem.scrape(newLink).whenComplete((res, ex) -> {
 						if (ex != null) {
 							CommunicationSystem.connectedToWiFi().thenAccept(stillConnected -> {
-								if (!(wasConnected = ActionSystem.warnWiFi(Gui.this, warning, stillConnected,
+								if (!(wasConnected = ActionSystem.warnWiFi(Gui.this, homePage.warning, stillConnected,
 										wasConnected)))
 									throw new RuntimeException();
 
@@ -162,23 +92,23 @@ public class Gui extends JFrame {
 
 						if (doc == null || doc.html().equals(res.html()))
 							return;
-						else if (!doc.text().equals(res.text())) { // TODO: find difference
+						else if (!doc.text().equals(res.text())) { 
 							states.put(link, URLState.UPDATED);
-							ActionSystem.updateTextArea(textArea, links, states);
-							notif.displayTray(link + " updated");
-							if (!inFocus)
-								notif.addToBadge();
+							ActionSystem.updateTextArea(homePage.textArea, links, states);
+							ActionSystem.writeFile(APPNAME, newLink, res.html());
+							notif.updateBadge(states.values());
+							if (!inFocus) {
+								notif.displayTray(link + " updated");
+							}
 						}
-
 						info.put(link, res);
-						ActionSystem.writeFile(APPNAME, newLink, res.html());
 					});
 
 				}); /* end of loop */
 
 				System.out.println("auto scraped");
 			}); 
-		}, 60, 50000, TimeUnit.SECONDS); 
+		}, 10, 5555, TimeUnit.SECONDS);  // TODO: find the difference of texts and show it
 
 		if (Math.random() == 1) { // TODO: change time interval
 			scheduler.shutdown();

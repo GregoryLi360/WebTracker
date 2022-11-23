@@ -1,7 +1,7 @@
 package systems;
 
 import java.io.*;
-import java.nio.file.Files;
+import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -48,7 +48,7 @@ public class ActionSystem {
 	}
 	
 	public static File writeFile(final String APPNAME, String link, String content) {
-		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + link.substring(link.indexOf('/') + 2));
+		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + link.substring(link.indexOf('/') + 2).replaceAll("\\.", "_"));
 		if (!dir.exists()) dir.mkdirs();
 		
 		File file = new File(dir.getPath() + "/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd h.m.s a")) + ".html");
@@ -61,8 +61,23 @@ public class ActionSystem {
 		return file;
 	}
 	
+	public static void stupid(final String APPNAME, String link, String content) {
+		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + link.substring(link.indexOf('/') + 2).replaceAll("\\.", "_"));
+		if (!dir.exists()) dir.mkdirs();
+		
+		File file = new File(dir.getPath() + "/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd h.m.s a")) + ".txt");
+		try {
+			Files.write(file.toPath(), content.getBytes());
+		} catch (Exception e) {
+			JOptionPane.showMessageDialog(null, "Unable to write HTML file");
+		}
+	}
+	
 	public static File getMostRecent(String APPNAME, String dirname) {
-		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + dirname.substring(dirname.indexOf('/') + 2));
+		return getMostRecent(APPNAME, dirname, Set.of());
+	}
+	public static File getMostRecent(String APPNAME, String dirname, Set<String> exclude) {
+		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + dirname.substring(dirname.indexOf('/') + 2).replaceAll("\\.", "_"));
 		if (!dir.exists()) return null;
 		
 		LocalDateTime mostRecent = null;
@@ -70,12 +85,20 @@ public class ActionSystem {
 		
 		for (File f: dir.listFiles()) {
 			if (!f.isFile()) continue;
+			if (exclude.contains(f.getName())) continue;
 			
 			String name = f.getName();
 			int index = name.lastIndexOf('.');
 			if (!name.substring(index + 1).equals("html")) continue;
 			
-			LocalDateTime fileTime = LocalDateTime.parse(name.substring(0, index), pattern);
+			LocalDateTime fileTime;
+			
+			try {
+				fileTime = LocalDateTime.parse(name.substring(0, index), pattern);
+			} catch (Exception e) {
+				continue;
+			}
+			
 			if (mostRecent == null) {
 				mostRecent = fileTime;
 			} else if (fileTime.isAfter(mostRecent)) {
@@ -83,6 +106,6 @@ public class ActionSystem {
 			}
 		}
 		
-		return new File(dir.getPath() + "/" + mostRecent.format(pattern) + ".html");
+		return mostRecent == null ? null : new File(dir.getPath() + "/" + mostRecent.format(pattern) + ".html");
 	}
 }
