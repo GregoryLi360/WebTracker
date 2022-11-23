@@ -1,7 +1,6 @@
 package main;
 import javax.swing.SwingUtilities;
 
-import pages.*;
 import systems.*;
 
 public class WebTracker {
@@ -13,7 +12,7 @@ public class WebTracker {
 			public void run() {
 				NotificationSystem notif = new NotificationSystem();
 				try {
-					new Gui(notif, new Home(), new Settings()).setVisible(true);
+					new Gui(notif).setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
