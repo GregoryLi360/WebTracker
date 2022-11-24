@@ -78,7 +78,7 @@ public class Home extends JPanel {
 		
 		var settingsAction = GuiHelperSystem.getSettingsAction(gui);
 		try {
-			settingsImg = ImageIO.read(new File("settings.png"));
+			settingsImg = ImageIO.read(new File("images/settings.png"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -98,7 +98,7 @@ public class Home extends JPanel {
 		
 		var refreshAction = GuiHelperSystem.getRefreshAction(gui, this);
 		try {
-			refreshImg = ImageIO.read(new File("refresh.png"));
+			refreshImg = ImageIO.read(new File("images/refresh.png"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

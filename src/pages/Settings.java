@@ -40,7 +40,7 @@ public class Settings extends JPanel {
 
         homeAction = GuiHelperSystem.getHomeAction(gui, this);
         try {
-            homeImg = ImageIO.read(new File("home.png"));
+            homeImg = ImageIO.read(new File("images/home.png"));
         } catch (IOException e) {
             e.printStackTrace();
         }
