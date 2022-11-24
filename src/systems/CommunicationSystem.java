@@ -1,5 +1,4 @@
 package systems;
-import java.util.*;
 import java.util.concurrent.*;
 import java.io.IOException;
 import java.net.*;
@@ -9,7 +8,6 @@ import org.jsoup.nodes.Document;
 
 /* communication system */
 public class CommunicationSystem {
-	
 	/* scrape text from url */
 	public static CompletableFuture<Document> scrape (String url) {
 		return CompletableFuture.supplyAsync(() -> {
@@ -19,10 +17,6 @@ public class CommunicationSystem {
 				throw new CompletionException(e);
 			} 
 		});
-	}
-	
-	public HashMap<String, String> crawl(String url) {
-		return null;
 	}
 	
 	/* check wifi status */

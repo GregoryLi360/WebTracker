@@ -5,41 +5,23 @@ import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-
 import javax.swing.*;
-
-import types.*;
 
 /* helper actions */ 
 public class ActionSystem {
-
 	/* handles warning when network connection state changes */
-	public static boolean warnWiFi(JFrame frame, JLabel warning, Boolean connected, boolean wasConnected) {
-		if (wasConnected && !connected) warn(frame, warning, true);
-		else if (!wasConnected && connected) warn(frame, warning, false);
+	public static boolean warnWiFi(JPanel page, JLabel warning, Boolean connected, boolean wasConnected) {
+		if (wasConnected && !connected) warn(page, warning, true);
+		else if (!wasConnected && connected) warn(page, warning, false);
 		return wasConnected = connected;
 	}
 	
 	/* adds JLabel to JFrame */
-	private static void warn(JFrame frame, JLabel warning, boolean b) {
-		if (b) frame.add(warning);
-		else frame.remove(warning);
-		frame.repaint();
+	private static void warn(JPanel page, JLabel warning, boolean b) {
+		if (b) page.add(warning);
+		else page.remove(warning);
+		page.repaint();
 	}
-	
-	/* updates viewable text area */
-	public static void updateTextArea(JTextArea textArea, ArrayList<String> list, HashMap<String, URLState> states) {
-		int len = list.size();
-		StringBuilder sb = new StringBuilder(len*100);
-        for (int i=0; i<len; i++) {
-        	String str = list.get(i);
-        	var state = states.get(str);
-        	if (state != URLState.UNCHANGED) sb.append((i + 1) + ". " + str + "    " + state + "\n");
-        	else sb.append((i + 1) + ". " + str + "\n");
-        }
-        
-		textArea.setText(sb.toString());
-	}	
 	
 	/* prepends http when neccessary */
 	public static String prependHTTP(String link) {
@@ -47,6 +29,7 @@ public class ActionSystem {
 				"http://" + link : link;
 	}
 	
+	/* writes html files in subdirectory with current date time */
 	public static File writeFile(final String APPNAME, String link, String content) {
 		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + link.substring(link.indexOf('/') + 2).replaceAll("\\.", "_"));
 		if (!dir.exists()) dir.mkdirs();
@@ -60,22 +43,23 @@ public class ActionSystem {
 		
 		return file;
 	}
-	
-	public static void stupid(final String APPNAME, String link, String content) {
-		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + link.substring(link.indexOf('/') + 2).replaceAll("\\.", "_"));
-		if (!dir.exists()) dir.mkdirs();
+
+	/* recursively deletes non empty directories */
+	public static void deleteDirectory(File dir) throws StackOverflowError {
+		if (!dir.isDirectory()) return;
 		
-		File file = new File(dir.getPath() + "/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd h.m.s a")) + ".txt");
-		try {
-			Files.write(file.toPath(), content.getBytes());
-		} catch (Exception e) {
-			JOptionPane.showMessageDialog(null, "Unable to write HTML file");
-		}
+		Arrays.stream(dir.listFiles()).forEach(file -> {
+			if (file.isDirectory()) deleteDirectory(file);
+			file.delete();
+		});
 	}
 	
+	/* gets the most recent html file by the dated name */
 	public static File getMostRecent(String APPNAME, String dirname) {
 		return getMostRecent(APPNAME, dirname, Set.of());
 	}
+	
+	/* gets most recent html file excluding a set of files */
 	public static File getMostRecent(String APPNAME, String dirname, Set<String> exclude) {
 		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + dirname.substring(dirname.indexOf('/') + 2).replaceAll("\\.", "_"));
 		if (!dir.exists()) return null;
