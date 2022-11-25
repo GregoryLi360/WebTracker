@@ -318,6 +318,7 @@ public class GuiHelperSystem {
 					if (len == 1) {
 						System.out.println("hi " + index);
 						removeAction(gui, homePage, 0);
+						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states);
 						return;
 					}
 
