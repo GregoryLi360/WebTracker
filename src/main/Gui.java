@@ -73,6 +73,7 @@ public class Gui extends JFrame {
 		long interval = 300;
 		try {
 			interval = Long.parseLong(cache.get(0).get(0));
+			if (interval < 300) interval = 300;
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
 		}
