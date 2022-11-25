@@ -316,7 +316,6 @@ public class GuiHelperSystem {
 					int len = gui.links.size();
 					if (len == 0) return; 
 					if (len == 1) {
-						System.out.println("hi " + index);
 						removeAction(gui, homePage, 0);
 						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states);
 						return;
