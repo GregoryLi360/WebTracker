@@ -5,7 +5,11 @@ import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
+
 import javax.swing.*;
+
+import types.URLState;
 
 /* helper actions */ 
 public class ActionSystem {
@@ -31,7 +35,7 @@ public class ActionSystem {
 	
 	/* writes html files in subdirectory with current date time */
 	public static File writeFile(final String APPNAME, String link, String content) {
-		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + link.substring(link.indexOf('/') + 2).replaceAll("\\.", "_"));
+		File dir = new File(System.getProperty("user.home") + "/" + APPNAME + "Resources/" + link.substring(link.indexOf('/') + 2).replaceAll("\\.", "_"));
 		if (!dir.exists()) dir.mkdirs();
 		
 		File file = new File(dir.getPath() + "/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd h.m.s a")) + ".html");
@@ -61,7 +65,7 @@ public class ActionSystem {
 	
 	/* gets most recent html file excluding a set of files */
 	public static File getMostRecent(String APPNAME, String dirname, Set<String> exclude) {
-		File dir = new File(System.getProperty("user.home") + "/" + APPNAME +"Resources/" + dirname.substring(dirname.indexOf('/') + 2).replaceAll("\\.", "_"));
+		File dir = new File(System.getProperty("user.home") + "/" + APPNAME + "Resources/" + dirname.substring(dirname.indexOf('/') + 2).replaceAll("\\.", "_"));
 		if (!dir.exists()) return null;
 		
 		LocalDateTime mostRecent = null;
@@ -91,5 +95,57 @@ public class ActionSystem {
 		}
 		
 		return mostRecent == null ? null : new File(dir.getPath() + "/" + mostRecent.format(pattern) + ".html");
+	}
+
+	public static File writeCacheFile(final String APPNAME, long interval) {
+		File dir = new File(System.getProperty("user.home") + "/" + APPNAME + "Resources");
+		if (!dir.exists()) dir.mkdirs();
+
+		File cache = new File(dir.getPath() + "/cache.txt");
+		if (!cache.exists())
+			try {
+				Files.write(cache.toPath(), Long.toString(interval).getBytes());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		else {
+			try {
+				List<String> content = Files.readAllLines(cache.toPath());
+				List<String> links = content.subList(1, content.size());
+				Files.write(cache.toPath(), (Long.toString(interval) + "\n" + String.join("\n", links)).getBytes());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		return cache;
+	}
+
+	public static File writeCacheFile(final String APPNAME, List<String> links, Map<String, URLState> states) {
+		File dir = new File(System.getProperty("user.home") + "/" + APPNAME + "Resources");
+		if (!dir.exists()) dir.mkdirs();
+
+		File cache = new File(dir.getPath() + "/cache.txt");
+		links = links.stream().filter(link -> states.get(link) != URLState.INVALID).collect(Collectors.toList());
+		if (cache.exists()) 
+			try {
+				long interval = Long.parseLong(Files.readAllLines(cache.toPath()).get(0));
+				Files.write(cache.toPath(), (interval + "\n" + String.join("\n", links)).getBytes());
+			} catch (NumberFormatException | IOException e) {
+				e.printStackTrace();
+			}
+		return cache;
+	}
+
+	public static List<List<String>> readCacheFile(final String APPNAME) {
+		File cache = new File(System.getProperty("user.home") + "/" + APPNAME + "Resources/cache.txt");
+		if (!cache.exists()) return List.of(new ArrayList<>(Arrays.asList("300")), new ArrayList<>());
+
+		try {
+			List<String> content = Files.readAllLines(cache.toPath());
+			return List.of(content.subList(0, 1), content.subList(1, content.size()));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return List.of(new ArrayList<>(Arrays.asList("300")), new ArrayList<>());
 	}
 }

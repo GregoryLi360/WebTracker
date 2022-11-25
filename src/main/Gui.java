@@ -3,10 +3,13 @@ package main;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import java.time.Duration;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.*;
 import javax.swing.*;
 
+import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import pages.*;
@@ -34,7 +37,7 @@ public class Gui extends JFrame {
 	public ScheduledFuture<?> autoScrape;
 
 	/* link states */
-	public ArrayList<String> links;
+	public List<String> links;
 	public HashMap<String, URLState> states;
 	public HashMap<String, Document> info;
 
@@ -48,15 +51,35 @@ public class Gui extends JFrame {
 		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 
 		/* initialize data structures used to track states */
-		links = new ArrayList<>();
+		var cache = ActionSystem.readCacheFile(APPNAME);
+		links = cache.get(1);
 		states = new HashMap<>();
 		info = new HashMap<>();
 		pageState = PageState.HOME;
+		links.forEach(link -> {
+			states.put(link, URLState.UNCHANGED);
+			Document doc = null;
+			try {
+				doc = Jsoup.parse(ActionSystem.getMostRecent(APPNAME, ActionSystem.prependHTTP(link)));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			info.put(link, doc);
+		});
 
 		this.notif = notif;
 		notif.clearBadge();
 		homePage = new Home(this);
-		settingsPage = new Settings(this);
+		long interval = 300;
+		try {
+			interval = Long.parseLong(cache.get(0).get(0));
+		} catch (NumberFormatException e) {
+			e.printStackTrace();
+		}
+		settingsPage = new Settings(this, interval);
+		ActionSystem.writeCacheFile(APPNAME, interval);
+		ActionSystem.writeCacheFile(APPNAME, links, states);
+		GuiHelperSystem.updateTextArea(homePage.textArea, links, states);
 
 		init();
 	}
@@ -110,7 +133,7 @@ public class Gui extends JFrame {
 
 		/* scheuldes auto scraping for every 5 minutes */
 		scheduler = Executors.newScheduledThreadPool(1);
-		changeAutoScrapeInterval(5, TimeUnit.MINUTES);
+		changeAutoScrapeInterval(settingsPage.interval.getSeconds(), TimeUnit.SECONDS);
 	}
 
 	/* changes interval between auto fetches */
@@ -124,6 +147,7 @@ public class Gui extends JFrame {
 
 		/* schedules at new interval */	
 		autoScrape = scheduler.scheduleAtFixedRate(() -> { scrapeAll(); System.out.println("auto scraped"); }, time, time, unit);  
+		ActionSystem.writeCacheFile(APPNAME, Duration.of(time, unit.toChronoUnit()).getSeconds());
 		System.out.println(time + " " + unit);
 	}
 

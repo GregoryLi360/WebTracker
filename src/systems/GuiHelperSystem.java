@@ -6,6 +6,8 @@ import java.io.*;
 import java.net.*;
 import java.nio.file.*;
 import java.util.*;
+import java.util.List;
+
 import javax.swing.*;
 
 import org.jsoup.nodes.Document;
@@ -113,7 +115,7 @@ public class GuiHelperSystem {
 	}
 
 	/* updates viewable text area */
-	public static void updateTextArea(JTextArea textArea, ArrayList<String> list, HashMap<String, URLState> states) {
+	public static void updateTextArea(JTextArea textArea, List<String> list, HashMap<String, URLState> states) {
 		int len = list.size();
 		StringBuilder sb = new StringBuilder(len*100);
         for (int i=0; i<len; i++) {
@@ -156,6 +158,7 @@ public class GuiHelperSystem {
 				CommunicationSystem.connectedToWiFi().thenAccept(connected -> {
 					if (!(gui.wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, connected, gui.wasConnected))) {
 						homePage.submit.setEnabled(true);
+						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states);
 						return;
 					}
 
@@ -173,6 +176,7 @@ public class GuiHelperSystem {
 						gui.info.put(txt, res);
 
 						ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
+						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states);
 					});
 				});
 			}
@@ -323,9 +327,9 @@ public class GuiHelperSystem {
 					for (int i = 0; i < len; i++) 
 						removeAction(gui, homePage, 0);
 
-				} else {
-					removeAction(gui, homePage, index);
-				}
+				} else removeAction(gui, homePage, index);
+
+				ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states);
 			}
 		};
 	}
@@ -430,6 +434,14 @@ public class GuiHelperSystem {
                     return;
                 
                 HashMap<Path, byte[]> filesToKeep = new HashMap<>();
+				File cache = new File(System.getProperty("user.home") + "/" + Gui.APPNAME + "Resources/cache.txt");
+				if (cache.exists()) 
+					try {
+						filesToKeep.put(cache.toPath(), Files.readAllBytes(cache.toPath()));
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+					           
                 gui.links.forEach(link -> {
                     final String newLink = ActionSystem.prependHTTP(link);
                     Path path = ActionSystem.getMostRecent(Gui.APPNAME, newLink).toPath();

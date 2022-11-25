@@ -35,8 +35,8 @@ public class Settings extends JPanel {
     public Duration interval;
 
     /* constructor to initialize all variables and constructs the page */
-    public Settings(Gui gui) {
-        interval = Duration.ofMinutes(5);
+    public Settings(Gui gui, long seconds) {
+        interval = Duration.ofSeconds(seconds);
 
         homeAction = GuiHelperSystem.getHomeAction(gui, this);
         try {
@@ -59,11 +59,18 @@ public class Settings extends JPanel {
         clear = new JButton("Clear Cache");
         clear.addActionListener(clearAction);
         
-        sliderValue = new JLabel("Auto fetch interval is set to 5 minutes", JLabel.CENTER);
+        long secs = interval.getSeconds();
+        long[] hms = { secs / 3600, (secs % 3600) / 60, secs % 60 };
+        StringBuilder sb = new StringBuilder();
+        if (hms[0] != 0) sb.append(hms[0] + " hour" + (hms[0] == 1 ? ", " : "s, "));
+        if (hms[1] != 0) sb.append(hms[1] + " minute" + (hms[1] == 1 ? ", " : "s, "));
+        if (hms[2] != 0 || hms[0] == 0 && hms[1] == 0) sb.append(hms[2] + " second" + (hms[2] == 1 ? "": "s"));
+        else sb.setLength(sb.length() - 2);
+        sliderValue = new JLabel("Auto fetch interval is set to " + sb, JLabel.CENTER);
         saveWarning = new JLabel("Unsaved changes", JLabel.CENTER);
         saveWarning.setForeground(Color.RED);
 
-        slider = new JSlider(JSlider.HORIZONTAL, 30, (int) Duration.ofMinutes(30).getSeconds(), (int) Duration.ofMinutes(5).getSeconds());
+        slider = new JSlider(JSlider.HORIZONTAL, 30, (int) Duration.ofMinutes(30).getSeconds(), (int) interval.getSeconds());
         slider.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
                 long value = slider.getValue();
