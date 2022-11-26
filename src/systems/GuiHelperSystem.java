@@ -215,6 +215,8 @@ public class GuiHelperSystem {
 						if (gui.states.get(link) == URLState.INVALID) continue;
 						viewAction(gui, homePage, link);
 					}
+				} else {
+					viewAction(gui, homePage, link);
 				}
 				
 			}
