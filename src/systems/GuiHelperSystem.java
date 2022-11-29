@@ -359,8 +359,10 @@ public class GuiHelperSystem {
 					for (int i = 0; i < gui.links.size(); i++) {
 						refreshAction(gui, homePage, i);
 					}
+					gui.notif.updateBadge(gui.states.values());
 				} else {
 					refreshAction(gui, homePage, index);
+					gui.notif.updateBadge(gui.states.values());
 				}
 			}
 		};
@@ -396,7 +398,11 @@ public class GuiHelperSystem {
 				
 				/* compare with previous info */
 				Document doc = gui.info.get(link);
-				if (doc == null || doc.html().equals(res.html())) {				
+				if (doc == null) {
+					gui.states.put(link, URLState.UNCHANGED);
+					gui.info.put(link, res);
+					GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
+				} else if (doc.html().equals(res.html())) {				
 					GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
 					return;
 				} else if (!doc.text().equals(res.text())) { 
@@ -404,7 +410,6 @@ public class GuiHelperSystem {
 					ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
 					if (originalState != URLState.UPDATED) {
 						gui.states.put(link, URLState.UPDATED);
-						gui.notif.updateBadge(gui.states.values());
 					}
 				}
 				

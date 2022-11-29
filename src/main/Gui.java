@@ -73,7 +73,7 @@ public class Gui extends JFrame {
 		long interval = 300;
 		try {
 			interval = Long.parseLong(cache.get(0).get(0));
-			if (interval < 300) interval = 300;
+			if (interval < 30 || interval > Duration.ofMinutes(30).getSeconds()) interval = 300;
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
 		}
@@ -181,7 +181,11 @@ public class Gui extends JFrame {
 					Document doc = info.get(link);
 
 					/* decides url state */
-					if (doc == null || doc.html().equals(res.html()))
+					if (doc == null) {
+						states.put(link, URLState.UNCHANGED);
+						info.put(link, res);
+						GuiHelperSystem.updateTextArea(homePage.textArea, links, states);
+					} else if (doc.html().equals(res.html()))
 						return;
 					else if (!doc.text().equals(res.text())) { 
 						states.put(link, URLState.UPDATED);

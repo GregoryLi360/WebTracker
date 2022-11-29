@@ -47,17 +47,22 @@ public class NotificationSystem {
     public void removeBadge() {
 		if (taskbar == null) return;
         taskbar.setIconBadge(Integer.toString(--badgeNumber));
+        if (badgeNumber == 0)
+            taskbar.setIconBadge(null);
     }
     
     /* updates badge number */
     public void updateBadge(Collection<URLState> states) {
     	if (taskbar == null) return;
         taskbar.setIconBadge(Integer.toString(badgeNumber = (int) states.stream().filter(s -> s == URLState.UPDATED).count()));
+        if (badgeNumber == 0)
+            taskbar.setIconBadge(null);
     }
     
     /* clears badge number */
     public void clearBadge() {
     	if (taskbar == null) return;
-        taskbar.setIconBadge(Integer.toString(badgeNumber = 0));
+        badgeNumber = 0;
+        taskbar.setIconBadge(null);
     }
 }
