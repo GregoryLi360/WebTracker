@@ -404,16 +404,15 @@ public class GuiHelperSystem {
 
 			/* get old info */
 			Document doc = gui.info.get(link);
+			System.out.println(doc);
 
 			/* decides url state */
 			if (doc == null) {
 				gui.states.put(link, URLState.UNCHANGED);
 				GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
 				File f = ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
-				if (!gui.unviewed.get(link).isFile()) gui.unviewed.put(link, f);
+				if (gui.unviewed.get(link) == null) gui.unviewed.put(link, f);
 			} else if (doc.html().equals(res.html())) {
-				gui.states.put(link, URLState.UNCHANGED);
-				GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
 				return;
 			}
 			else if (!doc.text().equals(res.text())) { 
@@ -440,7 +439,7 @@ public class GuiHelperSystem {
 
 			/* loop through links */
 			links.forEach(link -> {
-
+				
 				GuiHelperSystem.check(gui, homePage, link);
 
 			});

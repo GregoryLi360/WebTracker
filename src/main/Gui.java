@@ -71,7 +71,6 @@ public class Gui extends JFrame {
 			Document doc = null;
 			try {
 				File f = ActionSystem.getMostRecent(APPNAME, ActionSystem.prependHTTP(link));
-				if (f == null) continue;
 				doc = Jsoup.parse(f);
 			} catch (IOException e) {
 				e.printStackTrace();
