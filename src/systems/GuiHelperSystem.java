@@ -247,6 +247,7 @@ public class GuiHelperSystem {
 					if (ex != null) {
 						JOptionPane.showMessageDialog(null, "URL " + newLink + " is invalid");
 						gui.states.put(link, URLState.INVALID);
+						ActionSystem.writeCacheFile(Gui.APPNAME,gui.links, gui.states, gui.unviewed);
 						GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
 						return;
 					}
@@ -256,7 +257,7 @@ public class GuiHelperSystem {
 					gui.states.put(link, URLState.UNCHANGED);
 					gui.unviewed.put(link, null);
 					ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states, gui.unviewed);
-					
+						
 					
 					/* opens designated file */
 					try {
@@ -283,8 +284,11 @@ public class GuiHelperSystem {
 		} catch (IOException e1) {
 			JOptionPane.showMessageDialog(null, "Unable to open HTML file");
 		}
+
 		if (gui.states.get(link) == URLState.UPDATED) {
 			gui.states.put(link, URLState.UNCHANGED);
+			ActionSystem.writeCacheFile(Gui.APPNAME,gui.links, gui.states, gui.unviewed);
+
 			for (int i=0; i<10; i++) {
 				file = ActionSystem.getMostRecent(Gui.APPNAME, newLink, exclude);
 				if (file == null || file.equals(gui.unviewed.get(link))) {
@@ -321,7 +325,6 @@ public class GuiHelperSystem {
 		homePage.view.setEnabled(true);
 		gui.states.put(link, URLState.UNCHANGED);
 		GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
-		
 	}
 	
 	/* stop tracking selected link */
