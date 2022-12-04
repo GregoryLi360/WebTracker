@@ -291,9 +291,16 @@ public class GuiHelperSystem {
 
 			for (int i=0; i<10; i++) {
 				file = ActionSystem.getMostRecent(Gui.APPNAME, newLink, exclude);
-				if (file == null || file.equals(gui.unviewed.get(link))) {
+				if (file == null) break;
+
+				if (file.equals(gui.unviewed.get(link))) {
+					try {
+						Desktop.getDesktop().browse(file.toURI());
+					} catch (IOException e1) {
+						JOptionPane.showMessageDialog(null, "Unable to open HTML file");
+					}
 					break;
-				} 
+				}
 
 				exclude.add(file.getName());
 				
@@ -305,15 +312,6 @@ public class GuiHelperSystem {
 				}
 			}
 			gui.notif.updateBadge(gui.states.values());
-		}
-			
-				
-		if (file != null) {
-			try {
-				Desktop.getDesktop().browse(file.toURI());
-			} catch (IOException e1) {
-				JOptionPane.showMessageDialog(null, "Unable to open HTML file");
-			}
 		}
 		
 		try {
@@ -407,7 +405,6 @@ public class GuiHelperSystem {
 
 			/* get old info */
 			Document doc = gui.info.get(link);
-			System.out.println(doc);
 
 			/* decides url state */
 			if (doc == null) {
