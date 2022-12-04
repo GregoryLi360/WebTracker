@@ -287,6 +287,7 @@ public class GuiHelperSystem {
 
 		if (gui.states.get(link) == URLState.UPDATED) {
 			gui.states.put(link, URLState.UNCHANGED);
+			gui.unviewed.put(link, file);
 			ActionSystem.writeCacheFile(Gui.APPNAME,gui.links, gui.states, gui.unviewed);
 
 			for (int i=0; i<10; i++) {
