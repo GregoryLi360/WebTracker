@@ -98,7 +98,7 @@ public class Home extends JPanel {
 		
 		var refreshAction = GuiHelperSystem.getRefreshAction(gui, this);
 		try {
-			refreshImg = ImageIO.read(new File("images/refresh.png"));
+			refreshImg = ImageIO.read(new File("images/Luscherer.png"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
+
 import javax.swing.*;
 
 import org.jsoup.Jsoup;
@@ -40,6 +41,7 @@ public class Gui extends JFrame {
 	public List<String> links;
 	public HashMap<String, URLState> states;
 	public HashMap<String, Document> info;
+	public HashMap<String, File> unviewed;
 
 	/* random booleans */
 	public boolean wasConnected = true;
@@ -53,19 +55,29 @@ public class Gui extends JFrame {
 		/* initialize data structures used to track states */
 		var cache = ActionSystem.readCacheFile(APPNAME);
 		links = cache.get(1);
-		states = new HashMap<>();
+		states = new HashMap<String, URLState>();
 		info = new HashMap<>();
+		unviewed = new HashMap<>();
 		pageState = PageState.HOME;
-		links.forEach(link -> {
-			states.put(link, URLState.UNCHANGED);
+
+		for (ListIterator<String> linksIt = links.listIterator(), urlStateIt = cache.get(2).listIterator(), fileNameIt = cache.get(3).listIterator(); linksIt.hasNext() && urlStateIt.hasNext() && fileNameIt.hasNext(); ) {
+			String link = linksIt.next();
+			URLState urlState = URLState.valueOf(urlStateIt.next());
+			File file = new File(fileNameIt.next());
+
+			states.put(link, urlState);
+			unviewed.put(link, file);
+
 			Document doc = null;
 			try {
-				doc = Jsoup.parse(ActionSystem.getMostRecent(APPNAME, ActionSystem.prependHTTP(link)));
+				File f = ActionSystem.getMostRecent(APPNAME, ActionSystem.prependHTTP(link));
+				if (f == null) continue;
+				doc = Jsoup.parse(f);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 			info.put(link, doc);
-		});
+		}
 
 		this.notif = notif;
 		notif.clearBadge();
@@ -79,7 +91,7 @@ public class Gui extends JFrame {
 		}
 		settingsPage = new Settings(this, interval);
 		ActionSystem.writeCacheFile(APPNAME, interval);
-		ActionSystem.writeCacheFile(APPNAME, links, states);
+		ActionSystem.writeCacheFile(APPNAME, links, states, unviewed);
 		GuiHelperSystem.updateTextArea(homePage.textArea, links, states);
 
 		init();
@@ -147,61 +159,7 @@ public class Gui extends JFrame {
 			autoScrape.cancel(true);
 
 		/* schedules at new interval */	
-		autoScrape = scheduler.scheduleAtFixedRate(() -> { scrapeAll(); System.out.println("auto scraped"); }, time, time, unit);  
+		autoScrape = scheduler.scheduleAtFixedRate(() -> { GuiHelperSystem.checkAll(this, links, homePage); System.out.println("auto scraped"); }, time, time, unit);  
 		ActionSystem.writeCacheFile(APPNAME, Duration.of(time, unit.toChronoUnit()).getSeconds());
-		System.out.println(time + " " + unit);
-	}
-
-	/* fetches update for all links being tracked */
-	public void scrapeAll() {
-		/* check for active wifi connection */
-		CommunicationSystem.connectedToWiFi().thenAccept(connected -> {
-			if (!(wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, connected, wasConnected)))
-				return;
-
-			/* loop through links */
-			links.forEach(link -> {
-
-				/* scrape link */
-				final String newLink = ActionSystem.prependHTTP(link);
-				CommunicationSystem.scrape(newLink).whenComplete((res, ex) -> {
-					/* handle invalid url */
-					if (ex != null) {
-						CommunicationSystem.connectedToWiFi().thenAccept(stillConnected -> {
-							if (!(wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, stillConnected, wasConnected)))
-								throw new RuntimeException();
-
-							states.put(link, URLState.INVALID);
-						});
-
-						return;
-					}
-
-					/* get old info */
-					Document doc = info.get(link);
-
-					/* decides url state */
-					if (doc == null) {
-						states.put(link, URLState.UNCHANGED);
-						info.put(link, res);
-						GuiHelperSystem.updateTextArea(homePage.textArea, links, states);
-					} else if (doc.html().equals(res.html()))
-						return;
-					else if (!doc.text().equals(res.text())) { 
-						states.put(link, URLState.UPDATED);
-						GuiHelperSystem.updateTextArea(homePage.textArea, links, states);
-						ActionSystem.writeFile(APPNAME, newLink, res.html());
-						notif.updateBadge(states.values());
-						if (!inFocus) {
-							notif.displayTray(link + " updated");
-						}
-					}
-
-					/* updates info */
-					info.put(link, res);
-				});
-
-			});
-		});
 	}
 }

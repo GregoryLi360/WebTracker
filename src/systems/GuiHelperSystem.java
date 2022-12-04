@@ -158,7 +158,7 @@ public class GuiHelperSystem {
 				CommunicationSystem.connectedToWiFi().thenAccept(connected -> {
 					if (!(gui.wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, connected, gui.wasConnected))) {
 						homePage.submit.setEnabled(true);
-						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states);
+						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states, gui.unviewed);
 						return;
 					}
 
@@ -176,7 +176,7 @@ public class GuiHelperSystem {
 						gui.info.put(txt, res);
 
 						ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
-						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states);
+						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states, gui.unviewed);
 					});
 				});
 			}
@@ -231,78 +231,97 @@ public class GuiHelperSystem {
 		
 		/* opens the most recent file and the actual website url; if it has an updated status, opens the old local html version */
 		File file;
-		if ((file = ActionSystem.getMostRecent(Gui.APPNAME, newLink)) != null) {
-			if (gui.states.get(link) == URLState.UPDATED) {
-				gui.notif.removeBadge();
-				File secondMostRecent = ActionSystem.getMostRecent(Gui.APPNAME, newLink, Set.of(file.getName()));
-				if (secondMostRecent == null) {
-					JOptionPane.showMessageDialog(null, "Older HTML file not found");
-				} else {
+		
+		/* only used if submitted when not connected to wifi */
+		if ((file = ActionSystem.getMostRecent(Gui.APPNAME, newLink)) == null) {
+			CommunicationSystem.connectedToWiFi().thenAccept((Boolean connected) -> {
+				if (!(gui.wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, connected, gui.wasConnected))) {
+					homePage.view.setEnabled(true);
+					return;
+				}
+
+				CommunicationSystem.scrape(newLink).whenComplete((res, ex) -> {
+					homePage.view.setEnabled(true);
+
+					/* handle invalid url */
+					if (ex != null) {
+						JOptionPane.showMessageDialog(null, "URL " + newLink + " is invalid");
+						gui.states.put(link, URLState.INVALID);
+						GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
+						return;
+					}
+
+					/* put into data structures */
+					gui.info.put(link, res);
+					gui.states.put(link, URLState.UNCHANGED);
+					gui.unviewed.put(link, null);
+					ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states, gui.unviewed);
+					
+					
+					/* opens designated file */
 					try {
-						Desktop.getDesktop().browse(secondMostRecent.toURI());
+						Desktop.getDesktop().browse(ActionSystem.writeFile(Gui.APPNAME, newLink, res.html()).toURI());
 					} catch (IOException e1) {
 						JOptionPane.showMessageDialog(null, "Unable to open HTML file");
 					}
+					
+					try {
+						Desktop.getDesktop().browse(new URI(newLink));
+					} catch (IOException | URISyntaxException e1) {
+						JOptionPane.showMessageDialog(null, "Unable to open URL");
+					}
+					
+				});
+			});
+			return;
+		}
+		
+		homePage.view.setEnabled(true);
+		Set<String> exclude = new HashSet<>(Arrays.asList(file.getName()));
+		try {
+			Desktop.getDesktop().browse(file.toURI());
+		} catch (IOException e1) {
+			JOptionPane.showMessageDialog(null, "Unable to open HTML file");
+		}
+		if (gui.states.get(link) == URLState.UPDATED) {
+			gui.states.put(link, URLState.UNCHANGED);
+			for (int i=0; i<10; i++) {
+				file = ActionSystem.getMostRecent(Gui.APPNAME, newLink, exclude);
+				if (file == null || file.equals(gui.unviewed.get(link))) {
+					break;
+				} 
+
+				exclude.add(file.getName());
+				
+				try {
+					Desktop.getDesktop().browse(file.toURI());
+				} catch (IOException e1) {
+					JOptionPane.showMessageDialog(null, "Unable to open HTML file");
+					return;
 				}
 			}
+			gui.notif.updateBadge(gui.states.values());
+		}
 			
+				
+		if (file != null) {
 			try {
 				Desktop.getDesktop().browse(file.toURI());
 			} catch (IOException e1) {
 				JOptionPane.showMessageDialog(null, "Unable to open HTML file");
 			}
-			
-			try {
-				Desktop.getDesktop().browse(new URI(newLink));
-			} catch (IOException | URISyntaxException e1) {
-				JOptionPane.showMessageDialog(null, "Unable to open URL");
-			}
-			
-			homePage.view.setEnabled(true);
-			gui.states.put(link, URLState.UNCHANGED);
-			GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
-			return;
 		}
 		
+		try {
+			Desktop.getDesktop().browse(new URI(newLink));
+		} catch (IOException | URISyntaxException e1) {
+			JOptionPane.showMessageDialog(null, "Unable to open URL");
+		}
 		
-		/* only used if submitted when not connected to wifi */
-		CommunicationSystem.connectedToWiFi().thenAccept((Boolean connected) -> {
-			if (!(gui.wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, connected, gui.wasConnected))) {
-				homePage.view.setEnabled(true);
-				return;
-			}
-
-			CommunicationSystem.scrape(newLink).whenComplete((res, ex) -> {
-				homePage.view.setEnabled(true);
-
-				/* handle invalid url */
-				if (ex != null) {
-					JOptionPane.showMessageDialog(null, "URL " + newLink + " is invalid");
-					gui.states.put(link, URLState.INVALID);
-					GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
-					return;
-				}
-
-				/* put into data structures */
-				gui.info.put(link, res);
-				gui.states.put(link, URLState.UNCHANGED);
-				
-				
-				/* opens designated file */
-				try {
-					Desktop.getDesktop().browse(ActionSystem.writeFile(Gui.APPNAME, newLink, res.html()).toURI());
-				} catch (IOException e1) {
-					JOptionPane.showMessageDialog(null, "Unable to open HTML file");
-				}
-				
-				try {
-					Desktop.getDesktop().browse(new URI(newLink));
-				} catch (IOException | URISyntaxException e1) {
-					JOptionPane.showMessageDialog(null, "Unable to open URL");
-				}
-				
-			});
-		});
+		homePage.view.setEnabled(true);
+		gui.states.put(link, URLState.UNCHANGED);
+		GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
+		
 	}
 	
 	/* stop tracking selected link */
@@ -319,7 +338,7 @@ public class GuiHelperSystem {
 					if (len == 0) return; 
 					if (len == 1) {
 						removeAction(gui, homePage, 0);
-						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states);
+						ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states, gui.unviewed);
 						return;
 					}
 
@@ -331,7 +350,7 @@ public class GuiHelperSystem {
 
 				} else removeAction(gui, homePage, index);
 
-				ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states);
+				ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states, gui.unviewed);
 			}
 		};
 	}
@@ -343,6 +362,7 @@ public class GuiHelperSystem {
 		gui.links.remove(index);
 		gui.states.remove(link);
 		gui.info.remove(link);
+		gui.unviewed.remove(link);
 
 		GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
 	}
@@ -353,69 +373,78 @@ public class GuiHelperSystem {
 			public void actionPerformed(final ActionEvent e) {
 				CommunicationSystem.connectedToWiFi().thenAccept(connected -> gui.wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, connected, gui.wasConnected));
 				int index = homePage.dropdown.getSelectedIndex() - 1;
+				homePage.refresh.setEnabled(false);
 				if (index < 0) {
 					if (!homePage.dropdown.getSelectedItem().equals("ALL")) return;
-					homePage.refresh.setEnabled(false);
-					for (int i = 0; i < gui.links.size(); i++) {
-						refreshAction(gui, homePage, i);
-					}
-					gui.notif.updateBadge(gui.states.values());
+					checkAll(gui, gui.links, homePage);
 				} else {
-					refreshAction(gui, homePage, index);
-					gui.notif.updateBadge(gui.states.values());
+					check(gui, homePage, gui.links.get(index));
+					homePage.refresh.setEnabled(true);
 				}
 			}
 		};
 	}
 
-	/* refresh action helper method */
-	private static void refreshAction(Gui gui, Home homePage, int index) {
-		homePage.refresh.setEnabled(false);
-				
-		String link = gui.links.get(index);
-		String newLink = ActionSystem.prependHTTP(link);
-		
-		CommunicationSystem.connectedToWiFi().thenAccept((Boolean connected) -> {
-			if (!(gui.wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, connected, gui.wasConnected))) {
-				homePage.refresh.setEnabled(true);
+	public static void check(Gui gui, Home homePage, String link) {
+		/* scrape link */
+		final String newLink = ActionSystem.prependHTTP(link);
+		CommunicationSystem.scrape(newLink).whenComplete((res, ex) -> {
+			/* handle invalid url */
+			if (ex != null) {
+				CommunicationSystem.connectedToWiFi().thenAccept(stillConnected -> {
+					if (!(gui.wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, stillConnected, gui.wasConnected)))
+						throw new RuntimeException();
+
+					gui.states.put(link, URLState.INVALID);
+
+				});
+
 				return;
 			}
-			
-			CommunicationSystem.scrape(newLink).whenComplete((res, ex) -> {
-				homePage.refresh.setEnabled(true);
 
-				/* handle invalid url */
-				if (ex != null) {
-					JOptionPane.showMessageDialog(null, "URL " + newLink + " is invalid");
-					gui.states.put(link, URLState.INVALID);
-					GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
-					return;
-				}
-				
-				final var originalState = gui.states.get(link);
-				if (originalState == URLState.UPDATED) 
-					gui.states.put(link, URLState.UNCHANGED);
-				
-				/* compare with previous info */
-				Document doc = gui.info.get(link);
-				if (doc == null) {
-					gui.states.put(link, URLState.UNCHANGED);
-					gui.info.put(link, res);
-					GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
-				} else if (doc.html().equals(res.html())) {				
-					GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
-					return;
-				} else if (!doc.text().equals(res.text())) { 
-					gui.notif.updateBadge(gui.states.values());
-					ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
-					if (originalState != URLState.UPDATED) {
-						gui.states.put(link, URLState.UPDATED);
-					}
-				}
-				
-				gui.info.put(link, res);
+			/* get old info */
+			Document doc = gui.info.get(link);
+
+			/* decides url state */
+			if (doc == null) {
+				gui.states.put(link, URLState.UNCHANGED);
 				GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
+				File f = ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
+				if (!gui.unviewed.get(link).isFile()) gui.unviewed.put(link, f);
+			} else if (doc.html().equals(res.html())) {
+				gui.states.put(link, URLState.UNCHANGED);
+				GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
+				return;
+			}
+			else if (!doc.text().equals(res.text())) { 
+				gui.states.put(link, URLState.UPDATED);
+				GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
+				gui.notif.updateBadge(gui.states.values());
+				if (!gui.inFocus) {
+					gui.notif.displayTray(link + " updated");
+				}
+				File f = ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
+				if (!gui.unviewed.get(link).isFile()) gui.unviewed.put(link, f);
+			}
+			/* updates info */
+			gui.info.put(link, res);
+			ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states, gui.unviewed);
+		});
+	}
+
+	public static void checkAll(Gui gui, List<String> links, Home homePage) {
+		/* check for active wifi connection */
+		CommunicationSystem.connectedToWiFi().thenAccept(connected -> {
+			if (!(gui.wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, connected, gui.wasConnected)))
+				return;
+
+			/* loop through links */
+			links.forEach(link -> {
+
+				GuiHelperSystem.check(gui, homePage, link);
+
 			});
+			homePage.refresh.setEnabled(true);
 		});
 	}
 

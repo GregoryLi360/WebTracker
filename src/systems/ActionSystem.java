@@ -70,7 +70,7 @@ public class ActionSystem {
 		
 		LocalDateTime mostRecent = null;
 		final var pattern = DateTimeFormatter.ofPattern("yyyy-MM-dd h.m.s a");
-		
+
 		for (File f: dir.listFiles()) {
 			if (!f.isFile()) continue;
 			if (exclude.contains(f.getName())) continue;
@@ -120,12 +120,12 @@ public class ActionSystem {
 		return cache;
 	}
 
-	public static File writeCacheFile(final String APPNAME, List<String> links, Map<String, URLState> states) {
+	public static File writeCacheFile(final String APPNAME, List<String> links, Map<String, URLState> states, Map<String, File> unviewed) {
 		File dir = new File(System.getProperty("user.home") + "/" + APPNAME + "Resources");
 		if (!dir.exists()) dir.mkdirs();
 
 		File cache = new File(dir.getPath() + "/cache.txt");
-		links = links.stream().filter(link -> states.get(link) != URLState.INVALID).collect(Collectors.toList());
+		links = links.stream().map(l -> l + " " + states.get(l) + " " + unviewed.get(l)).collect(Collectors.toList());
 		if (cache.exists()) 
 			try {
 				long interval = Long.parseLong(Files.readAllLines(cache.toPath()).get(0));
@@ -138,14 +138,25 @@ public class ActionSystem {
 
 	public static List<List<String>> readCacheFile(final String APPNAME) {
 		File cache = new File(System.getProperty("user.home") + "/" + APPNAME + "Resources/cache.txt");
-		if (!cache.exists()) return List.of(new ArrayList<>(Arrays.asList("300")), new ArrayList<>());
+		if (!cache.exists()) return List.of(new ArrayList<>(Arrays.asList("300")), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
 
 		try {
 			List<String> content = Files.readAllLines(cache.toPath());
-			return List.of(content.subList(0, 1), content.subList(1, content.size()));
+			var linkContent = content.subList(1, content.size());
+			List<String> links = new ArrayList<>(), states = new ArrayList<>(), paths = new ArrayList<>();
+			linkContent.forEach(link -> {
+				var temp = link.split(" ");
+				links.add(temp[0]);
+				states.add(temp[1]);
+				paths.add(temp[2]);
+			});
+			return List.of(content.subList(0, 1), links, states, paths);
 		} catch (IOException e) {
 			e.printStackTrace();
+		} catch (Exception e) {
+			JOptionPane.showMessageDialog(null, "Cache file corrupted");
 		}
-		return List.of(new ArrayList<>(Arrays.asList("300")), new ArrayList<>());
+		
+		return List.of(new ArrayList<>(Arrays.asList("300")), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
 	}
 }
