@@ -38,7 +38,7 @@ public class ActionSystem {
 		File dir = new File(System.getProperty("user.home") + "/" + APPNAME + "Resources/" + link.substring(link.indexOf('/') + 2).replaceAll("\\.", "_"));
 		if (!dir.exists()) dir.mkdirs();
 		
-		File file = new File(dir.getPath() + "/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd h.m.s a")) + ".html");
+		File file = new File(dir.getPath() + "/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_h.m.s_a")) + ".html");
 		try {
 			Files.write(file.toPath(), content.getBytes());
 		} catch (Exception e) {
@@ -69,11 +69,11 @@ public class ActionSystem {
 		if (!dir.exists()) return null;
 		
 		LocalDateTime mostRecent = null;
-		final var pattern = DateTimeFormatter.ofPattern("yyyy-MM-dd h.m.s a");
+		final var pattern = DateTimeFormatter.ofPattern("yyyy-MM-dd_h.m.s_a");
 
 		for (File f: dir.listFiles()) {
 			if (!f.isFile()) continue;
-			if (exclude.contains(f.getName())) continue;
+			if (exclude.contains(f.getName()) || exclude.contains(f.getPath())) continue;
 			
 			String name = f.getName();
 			int index = name.lastIndexOf('.');

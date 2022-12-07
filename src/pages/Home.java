@@ -30,7 +30,6 @@ public class Home extends JPanel {
 	
 	/* image icons */
 	public Image settingsImg;
-	public Image refreshImg;
 
 	/* constructor to initialize all variables and constructs the page */
     public Home(Gui gui) {
@@ -97,22 +96,8 @@ public class Home extends JPanel {
 		settings.addActionListener(settingsAction);
 		
 		var refreshAction = GuiHelperSystem.getRefreshAction(gui, this);
-		try {
-			refreshImg = ImageIO.read(new File("images/Luscherer.png"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		refresh = new JButton() {
-			private static final long serialVersionUID = 2502053912393206291L;
 
-			@Override
-			public void paintComponent(Graphics g) {
-				super.paintComponent(g);
-				final int sideLen = Math.max(Math.min(Math.min(getWidth() - 25, getHeight() - 25), 30), 10);
-				g.drawImage(refreshImg, getWidth() / 2 - sideLen / 2, getHeight() / 2 - sideLen / 2, sideLen, sideLen, null);
-			}
-		};
+		refresh = new JButton("Manual Check");
 
 		refresh.addActionListener(refreshAction);
 	    

@@ -28,10 +28,9 @@ public class GuiHelperSystem {
 		final int settingsSideLen = Math.min(Math.max(minw, Math.min(maxw/5, ww/7)), Math.max(minh, Math.min(maxh, wh/10)));
 		Rectangle setting = new Rectangle(window.width - settingsSideLen - gap, gap, settingsSideLen, settingsSideLen);
 		Rectangle dropdown = new Rectangle(gap, entry.y + entry.height + gap, Math.max(minw, Math.min(maxw/3, ww/4)), Math.max(minh, Math.min(maxh, wh/10)));
-		Rectangle view = new Rectangle(dropdown.x + dropdown.width + gap, entry.y + entry.height + gap, Math.max(minw, Math.min(maxw/3, ww/4)), Math.max(minh, Math.min(maxh, wh/10)));
-		Rectangle remove = new Rectangle(view.x + view.width + gap, entry.y + entry.height + gap, Math.max(minw, Math.min(maxw/3, ww/4)), Math.max(minh, Math.min(maxh, wh/10)));
-		final int refreshSideLen = Math.min(Math.max(minw, Math.min(maxw/3, ww/4)), Math.max(minh, Math.min(maxh, wh/10)));
-		Rectangle refresh = new Rectangle(remove.x + remove.width + gap, entry.y + entry.height + gap, refreshSideLen, refreshSideLen);
+		Rectangle view = new Rectangle(dropdown.x + dropdown.width + gap, entry.y + entry.height + gap, Math.max(minw, Math.min(maxw/4, ww/6)), Math.max(minh, Math.min(maxh, wh/10)));
+		Rectangle remove = new Rectangle(view.x + view.width + gap, entry.y + entry.height + gap, Math.max(minw, Math.min(maxw/4, ww/6)), Math.max(minh, Math.min(maxh, wh/10)));
+		Rectangle refresh = new Rectangle(remove.x + remove.width + gap, entry.y + entry.height + gap, Math.max(minw, Math.min(maxw/4, ww/6)), Math.max(minh, Math.min(maxh, wh/10)));
 		Rectangle warning = new Rectangle(refresh.x + refresh.width + gap, entry.y + entry.height + gap, Math.min(ww - (dropdown.width + view.width + remove.width + 20), 300), Math.max(minh, Math.min(maxh, wh/10)));
 		Rectangle textArea = new Rectangle(gap, remove.y + remove.height + gap, Math.max(minw, ww - 10), Math.max(minh, wh - entry.height - dropdown.height - 50));
 		Rectangle slider = new Rectangle(dropdown.x, dropdown.y, dropdown.width + view.width + remove.width, dropdown.height);
@@ -286,14 +285,11 @@ public class GuiHelperSystem {
 		}
 
 		if (gui.states.get(link) == URLState.UPDATED) {
-			gui.states.put(link, URLState.UNCHANGED);
-			gui.unviewed.put(link, file);
-			ActionSystem.writeCacheFile(Gui.APPNAME,gui.links, gui.states, gui.unviewed);
-
 			for (int i=0; i<10; i++) {
 				file = ActionSystem.getMostRecent(Gui.APPNAME, newLink, exclude);
 				if (file == null) break;
 
+				System.out.println("file: " + file);
 				if (file.equals(gui.unviewed.get(link))) {
 					try {
 						Desktop.getDesktop().browse(file.toURI());
@@ -309,10 +305,9 @@ public class GuiHelperSystem {
 					Desktop.getDesktop().browse(file.toURI());
 				} catch (IOException e1) {
 					JOptionPane.showMessageDialog(null, "Unable to open HTML file");
-					return;
+					break;
 				}
 			}
-			gui.notif.updateBadge(gui.states.values());
 		}
 		
 		try {
@@ -323,7 +318,10 @@ public class GuiHelperSystem {
 		
 		homePage.view.setEnabled(true);
 		gui.states.put(link, URLState.UNCHANGED);
+		gui.unviewed.put(link, file);
+		gui.notif.updateBadge(gui.states.values());
 		GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
+		ActionSystem.writeCacheFile(Gui.APPNAME,gui.links, gui.states, gui.unviewed);
 	}
 	
 	/* stop tracking selected link */
@@ -428,6 +426,7 @@ public class GuiHelperSystem {
 			}
 			/* updates info */
 			gui.info.put(link, res);
+			System.out.println(doc + "\n" + res);
 			ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states, gui.unviewed);
 		});
 	}
@@ -435,6 +434,7 @@ public class GuiHelperSystem {
 	public static void checkAll(Gui gui, List<String> links, Home homePage) {
 		/* check for active wifi connection */
 		CommunicationSystem.connectedToWiFi().thenAccept(connected -> {
+			homePage.refresh.setEnabled(true);
 			if (!(gui.wasConnected = ActionSystem.warnWiFi(homePage, homePage.warning, connected, gui.wasConnected)))
 				return;
 
@@ -444,7 +444,6 @@ public class GuiHelperSystem {
 				GuiHelperSystem.check(gui, homePage, link);
 
 			});
-			homePage.refresh.setEnabled(true);
 		});
 	}
 
