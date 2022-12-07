@@ -284,13 +284,17 @@ public class GuiHelperSystem {
 			JOptionPane.showMessageDialog(null, "Unable to open HTML file");
 		}
 
-		if (gui.states.get(link) == URLState.UPDATED) {
+		var unviewed = gui.unviewed.get(link);
+		if (gui.states.get(link) == URLState.UPDATED && !file.equals(unviewed)) {
+			gui.unviewed.put(link, file);
+			System.out.println("unviewed: " + gui.unviewed.get(link));
+			System.out.println("curr file: " + file);
 			for (int i=0; i<10; i++) {
 				file = ActionSystem.getMostRecent(Gui.APPNAME, newLink, exclude);
 				if (file == null) break;
 
 				System.out.println("file: " + file);
-				if (file.equals(gui.unviewed.get(link))) {
+				if (file.equals(unviewed)) {
 					try {
 						Desktop.getDesktop().browse(file.toURI());
 					} catch (IOException e1) {
@@ -318,7 +322,6 @@ public class GuiHelperSystem {
 		
 		homePage.view.setEnabled(true);
 		gui.states.put(link, URLState.UNCHANGED);
-		gui.unviewed.put(link, file);
 		gui.notif.updateBadge(gui.states.values());
 		GuiHelperSystem.updateTextArea(homePage.textArea, gui.links, gui.states);
 		ActionSystem.writeCacheFile(Gui.APPNAME,gui.links, gui.states, gui.unviewed);
@@ -422,7 +425,7 @@ public class GuiHelperSystem {
 					gui.notif.displayTray(link + " updated");
 				}
 				File f = ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
-				if (!gui.unviewed.get(link).isFile()) gui.unviewed.put(link, f);
+				if (gui.unviewed.get(link) == null) gui.unviewed.put(link, f);
 			}
 			/* updates info */
 			gui.info.put(link, res);
