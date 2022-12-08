@@ -259,11 +259,7 @@ public class GuiHelperSystem {
 						
 					
 					/* opens designated file */
-					try {
-						Desktop.getDesktop().browse(ActionSystem.writeFile(Gui.APPNAME, newLink, res.html()).toURI());
-					} catch (IOException e1) {
-						JOptionPane.showMessageDialog(null, "Unable to open HTML file");
-					}
+					ActionSystem.writeFile(Gui.APPNAME, newLink, res.html());
 					
 					try {
 						Desktop.getDesktop().browse(new URI(newLink));
@@ -278,11 +274,11 @@ public class GuiHelperSystem {
 		
 		homePage.view.setEnabled(true);
 		Set<String> exclude = new HashSet<>(Arrays.asList(file.getName()));
-		try {
-			Desktop.getDesktop().browse(file.toURI());
-		} catch (IOException e1) {
-			JOptionPane.showMessageDialog(null, "Unable to open HTML file");
-		}
+		// try {
+		// 	Desktop.getDesktop().browse(file.toURI());
+		// } catch (IOException e1) {
+		// 	JOptionPane.showMessageDialog(null, "Unable to open HTML file");
+		// }
 
 		var unviewed = gui.unviewed.get(link);
 		if (gui.states.get(link) == URLState.UPDATED && !file.equals(unviewed)) {
@@ -429,7 +425,6 @@ public class GuiHelperSystem {
 			}
 			/* updates info */
 			gui.info.put(link, res);
-			System.out.println(doc + "\n" + res);
 			ActionSystem.writeCacheFile(Gui.APPNAME, gui.links, gui.states, gui.unviewed);
 		});
 	}
